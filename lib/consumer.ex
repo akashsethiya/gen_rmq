@@ -34,6 +34,8 @@ defmodule GenRMQ.Consumer do
   `exchange` - the name of the exchange to which `queue` should be bind.
   If does not exist it will be created
 
+  `type` - type of exchange(topic/direct)
+
   `routing_key` - queue binding key
 
   `prefetch_count` - limit the number of unacknowledged messages
@@ -70,6 +72,7 @@ defmodule GenRMQ.Consumer do
     [
       queue: "gen_rmq_in_queue",
       exchange: "gen_rmq_exchange",
+      type: "direct",
       routing_key: "#",
       prefetch_count: "10",
       uri: "amqp://guest:guest@localhost:5672",
@@ -88,6 +91,7 @@ defmodule GenRMQ.Consumer do
   @callback init() :: [
               queue: String.t(),
               exchange: String.t(),
+              type: String.t(),
               routing_key: String.t(),
               prefetch_count: String.t(),
               uri: String.t(),
@@ -335,6 +339,7 @@ defmodule GenRMQ.Consumer do
     queue = config[:queue]
     exchange = config[:exchange]
     routing_key = config[:routing_key]
+    type = config[:type]
     prefetch_count = String.to_integer(config[:prefetch_count])
     ttl = config[:queue_ttl]
 
@@ -343,7 +348,12 @@ defmodule GenRMQ.Consumer do
 
     Basic.qos(chan, prefetch_count: prefetch_count)
     Queue.declare(chan, queue, durable: true, arguments: arguments)
-    Exchange.topic(chan, exchange, durable: true)
+    cond do
+      type == "topic" ->
+        Exchange.topic(chan, exchange, durable: true)
+      type == "direct" ->
+        Exchange.direct(chan, exchange, durable: true)
+    end
     Queue.bind(chan, queue, exchange, routing_key: routing_key)
     queue
   end
