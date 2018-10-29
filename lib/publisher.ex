@@ -28,6 +28,8 @@ defmodule GenRMQ.Publisher do
 
   `exchange` - the name of the target exchange. If does not exist it will be created
 
+  `type` - type of the target exchange(direct/topic)
+
   ### Optional:
 
   `app_id` - publishing application ID
@@ -37,6 +39,7 @@ defmodule GenRMQ.Publisher do
   def init() do
     [
       exchange: "gen_rmq_exchange",
+      type: "direct",
       uri: "amqp://guest:guest@localhost:5672"
       app_id: :my_app_id
     ]
@@ -47,6 +50,7 @@ defmodule GenRMQ.Publisher do
   @callback init() :: [
               exchange: String.t(),
               uri: String.t(),
+              type: String.t(),
               app_id: Atom.t()
             ]
 
@@ -147,7 +151,14 @@ defmodule GenRMQ.Publisher do
 
     {:ok, conn} = connect(state)
     {:ok, channel} = Channel.open(conn)
-    Exchange.topic(channel, config[:exchange], durable: true)
+    cond do
+      config[:type] == "topic" ->
+        Exchange.topic(channel, config[:exchange], durable: true)
+      config[:type] == "direct" ->
+        Exchange.direct(channel, config[:exchange], durable: true)
+    end
+
+    # Exchange.topic(channel, config[:exchange], durable: true)
     {:ok, %{channel: channel, module: module, config: config}}
   end
 
